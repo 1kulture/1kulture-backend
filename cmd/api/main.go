@@ -21,9 +21,8 @@ import (
 	"github.com/1kulture/1kulture-backend/internal/utils/jwt"
 	"github.com/1kulture/1kulture-backend/internal/utils/logger"
 	"github.com/1kulture/1kulture-backend/internal/utils/validator"
-
 	// Import your own docs package
-	_ "github.com/1kulture/1kulture-backend/docs"
+	//_ "github.com/1kulture/1kulture-backend/docs"
 )
 
 // @title 1Kulture API

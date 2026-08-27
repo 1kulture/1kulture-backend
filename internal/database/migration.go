@@ -23,6 +23,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.AuditLog{},
 		&models.EmailVerification{},
 		&models.PasswordReset{},
+		&models.WaitlistEntry{},
 		// Add more models here as they are created
 	}
 
