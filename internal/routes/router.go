@@ -36,6 +36,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB, redisClient *redis.Client, jwt
 	auditLogRepo := repositories.NewAuditLogRepository(db)
 	passwordResetRepo := repositories.NewPasswordResetRepository(db)
 	kycRepo := repositories.NewKYCRepository(db)
+	waitlistRepo := repositories.NewWaitlistRepository(db)
 
 	// Initialize services
 	emailService := email.NewEmailService(&cfg.Email)
@@ -51,10 +52,12 @@ func SetupRouter(cfg *config.Config, db *gorm.DB, redisClient *redis.Client, jwt
 		cfg,
 	)
 	userService := services.NewUserService(userRepo, roleRepo, auditLogRepo, kycRepo)
+	waitlistService := services.NewWaitlistService(waitlistRepo, auditLogRepo)
 
 	// Initialize controllers
 	authController := controllers.NewAuthController(authService)
 	userController := controllers.NewUserController(userService)
+	waitlistController := controllers.NewWaitlistController(waitlistService)
 
 	// API routes
 	v1 := router.Group("/api/v1")
@@ -71,6 +74,8 @@ func SetupRouter(cfg *config.Config, db *gorm.DB, redisClient *redis.Client, jwt
 			authRoutes.POST("/forgot-password", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.ForgotPassword)
 			authRoutes.POST("/reset-password", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.ResetPassword)
 		}
+
+		v1.POST("/waitlist", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), waitlistController.AddToWaitlist)
 
 		// Protected auth routes
 		protectedAuthRoutes := v1.Group("/auth")
