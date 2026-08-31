@@ -8,6 +8,8 @@ import (
 	"github.com/1kulture/1kulture-backend/internal/utils/logger"
 	"github.com/1kulture/1kulture-backend/internal/utils/response"
 	"github.com/1kulture/1kulture-backend/internal/utils/validator"
+
+	_ "github.com/1kulture/1kulture-backend/internal/responses"
 )
 
 type WaitlistController struct {
@@ -27,10 +29,10 @@ func NewWaitlistController(waitlistService interfaces.WaitlistService) *Waitlist
 // @Accept json
 // @Produce json
 // @Param request body requests.WaitlistRequest true "Waitlist request"
-// @Success 201 {object} Response "Added to waitlist"
-// @Failure 400 {object} ErrorResponse "Bad request"
-// @Failure 422 {object} ErrorResponse "Validation error"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 201 {object} responses.Response "Added to waitlist"
+// @Failure 400 {object} responses.ErrorResponse "Bad request"
+// @Failure 422 {object} responses.ErrorResponse "Validation error"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /waitlist [post]
 func (c *WaitlistController) AddToWaitlist(ctx *gin.Context) {
 	var req requests.WaitlistRequest

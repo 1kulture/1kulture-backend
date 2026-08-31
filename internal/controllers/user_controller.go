@@ -9,6 +9,8 @@ import (
 	"github.com/1kulture/1kulture-backend/internal/utils/logger"
 	"github.com/1kulture/1kulture-backend/internal/utils/response"
 	"github.com/1kulture/1kulture-backend/internal/utils/validator"
+
+	_ "github.com/1kulture/1kulture-backend/internal/responses"
 )
 
 type UserController struct {
@@ -28,10 +30,10 @@ func NewUserController(userService interfaces.UserService) *UserController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} UserResponse "Profile retrieved successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 404 {object} ErrorResponse "User not found"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 200 {object} responses.UserResponse "Profile retrieved successfully"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 404 {object} responses.ErrorResponse "User not found"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/profile [get]
 func (c *UserController) GetProfile(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")
@@ -68,11 +70,11 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body requests.UpdateProfileRequest true "Update profile request"
-// @Success 200 {object} UserResponse "Profile updated successfully"
-// @Failure 400 {object} ErrorResponse "Bad request"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 422 {object} ErrorResponse "Validation error"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 200 {object} responses.UserResponse "Profile updated successfully"
+// @Failure 400 {object} responses.ErrorResponse "Bad request"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 422 {object} responses.ErrorResponse "Validation error"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/profile [put]
 func (c *UserController) UpdateProfile(ctx *gin.Context) {
 	var req requests.UpdateProfileRequest
@@ -117,11 +119,11 @@ func (c *UserController) UpdateProfile(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body requests.UpdateRoleRequest true "Update role request"
-// @Success 200 {object} Response "Role updated successfully"
-// @Failure 400 {object} ErrorResponse "Bad request"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 422 {object} ErrorResponse "Validation error"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 200 {object} responses.Response "Role updated successfully"
+// @Failure 400 {object} responses.ErrorResponse "Bad request"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 422 {object} responses.ErrorResponse "Validation error"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/role [post]
 func (c *UserController) UpdateRole(ctx *gin.Context) {
 	var req requests.UpdateRoleRequest
@@ -169,11 +171,11 @@ func (c *UserController) UpdateRole(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body requests.KYCRequest true "KYC request"
-// @Success 201 {object} KYCResponse "KYC submitted successfully"
-// @Failure 400 {object} ErrorResponse "Bad request"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 422 {object} ErrorResponse "Validation error"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 201 {object} responses.KYCResponse "KYC submitted successfully"
+// @Failure 400 {object} responses.ErrorResponse "Bad request"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 422 {object} responses.ErrorResponse "Validation error"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/kyc [post]
 func (c *UserController) SubmitKYC(ctx *gin.Context) {
 	var req requests.KYCRequest
@@ -217,9 +219,9 @@ func (c *UserController) SubmitKYC(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} KYCResponse "KYC status retrieved successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Success 200 {object} responses.KYCResponse "KYC status retrieved successfully"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/kyc/status [get]
 func (c *UserController) GetKYCStatus(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")
