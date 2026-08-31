@@ -21,8 +21,9 @@ import (
 	"github.com/1kulture/1kulture-backend/internal/utils/jwt"
 	"github.com/1kulture/1kulture-backend/internal/utils/logger"
 	"github.com/1kulture/1kulture-backend/internal/utils/validator"
+
 	// Import your own docs package
-	//_ "github.com/1kulture/1kulture-backend/docs"
+	_ "github.com/1kulture/1kulture-backend/docs"
 )
 
 // @title 1Kulture API
@@ -176,13 +177,8 @@ func (app *Application) closeRedis() {
 }
 
 func (app *Application) setupSwagger() {
-	// Enable Swagger if explicitly set or if not in production
 	if os.Getenv("ENABLE_SWAGGER") == "true" || app.config.App.Environment != "production" {
 		app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-		// Also serve raw JSON for debugging
-		app.router.GET("/swagger/doc.json", func(c *gin.Context) {
-			c.File("./docs/swagger.json")
-		})
 		logger.Info("Swagger documentation available at /swagger/index.html")
 	} else {
 		logger.Info("Swagger is disabled in production")
