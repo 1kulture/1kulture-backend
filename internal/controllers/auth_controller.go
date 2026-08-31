@@ -28,11 +28,11 @@ func NewAuthController(authService interfaces.AuthService) *AuthController {
 // @Accept json
 // @Produce json
 // @Param request body requests.SignUpRequest true "Sign up request"
-// @Success 201 {object} responses.AuthResponse
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 409 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 201 {object} AuthResponse "Account created successfully"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 409 {object} ErrorResponse "Email already registered"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/signup [post]
 func (c *AuthController) SignUp(ctx *gin.Context) {
 	var req requests.SignUpRequest
@@ -69,11 +69,11 @@ func (c *AuthController) SignUp(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.SignInRequest true "Sign in request"
-// @Success 200 {object} responses.AuthResponse
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 401 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} AuthResponse "Signed in successfully"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 401 {object} ErrorResponse "Invalid credentials"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/signin [post]
 func (c *AuthController) SignIn(ctx *gin.Context) {
 	var req requests.SignInRequest
@@ -115,10 +115,10 @@ func (c *AuthController) SignIn(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.VerifyEmailRequest true "Verify email request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Email verified successfully"
+// @Failure 400 {object} ErrorResponse "Invalid verification code"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/verify-email [post]
 func (c *AuthController) VerifyEmail(ctx *gin.Context) {
 	var req requests.VerifyEmailRequest
@@ -161,10 +161,10 @@ func (c *AuthController) VerifyEmail(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.ResendVerificationRequest true "Resend verification request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Verification code sent"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/resend-verification [post]
 func (c *AuthController) ResendVerification(ctx *gin.Context) {
 	var req requests.ResendVerificationRequest
@@ -200,11 +200,11 @@ func (c *AuthController) ResendVerification(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.RefreshTokenRequest true "Refresh token request"
-// @Success 200 {object} responses.TokenResponse
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 401 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} TokenResponse "Token refreshed successfully"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 401 {object} ErrorResponse "Invalid refresh token"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/refresh-token [post]
 func (c *AuthController) RefreshToken(ctx *gin.Context) {
 	var req requests.RefreshTokenRequest
@@ -237,11 +237,11 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.LogoutRequest true "Logout request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 401 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Logged out successfully"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 401 {object} ErrorResponse "Invalid token"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/logout [post]
 func (c *AuthController) Logout(ctx *gin.Context) {
 	var req requests.LogoutRequest
@@ -273,10 +273,10 @@ func (c *AuthController) Logout(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.ForgotPasswordRequest true "Forgot password request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Password reset email sent"
+// @Failure 400 {object} ErrorResponse "Bad request"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/forgot-password [post]
 func (c *AuthController) ForgotPassword(ctx *gin.Context) {
 	var req requests.ForgotPasswordRequest
@@ -309,10 +309,10 @@ func (c *AuthController) ForgotPassword(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body requests.ResetPasswordRequest true "Reset password request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Password reset successfully"
+// @Failure 400 {object} ErrorResponse "Invalid or expired token"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/reset-password [post]
 func (c *AuthController) ResetPassword(ctx *gin.Context) {
 	var req requests.ResetPasswordRequest
@@ -349,11 +349,11 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body requests.ChangePasswordRequest true "Change password request"
-// @Success 200 {object} responses.Response
-// @Failure 400 {object} responses.ErrorResponse
-// @Failure 401 {object} responses.ErrorResponse
-// @Failure 422 {object} responses.ErrorResponse
-// @Failure 500 {object} responses.ErrorResponse
+// @Success 200 {object} Response "Password changed successfully"
+// @Failure 400 {object} ErrorResponse "Invalid password"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 422 {object} ErrorResponse "Validation error"
+// @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /auth/change-password [post]
 func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	var req requests.ChangePasswordRequest
