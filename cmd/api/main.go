@@ -176,10 +176,16 @@ func (app *Application) closeRedis() {
 }
 
 func (app *Application) setupSwagger() {
-	// Only enable Swagger in non-production environments
-	if app.config.App.Environment != "production" {
+	// Enable Swagger if explicitly set or if not in production
+	if os.Getenv("ENABLE_SWAGGER") == "true" || app.config.App.Environment != "production" {
 		app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		// Also serve raw JSON for debugging
+		app.router.GET("/swagger/doc.json", func(c *gin.Context) {
+			c.File("./docs/swagger.json")
+		})
 		logger.Info("Swagger documentation available at /swagger/index.html")
+	} else {
+		logger.Info("Swagger is disabled in production")
 	}
 }
 
