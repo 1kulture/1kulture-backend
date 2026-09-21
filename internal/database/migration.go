@@ -24,6 +24,22 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.EmailVerification{},
 		&models.PasswordReset{},
 		&models.WaitlistEntry{},
+
+		// Phase 0
+		&models.Setting{},
+		&models.Currency{},
+		&models.CurrencyRequest{},
+		&models.CommissionTier{},
+		&models.OrganizerCommissionOverride{},
+
+		// Phase 1
+		&models.Event{},
+		&models.EventOccurrence{},
+		&models.EventCoOrganizer{},
+		&models.EventFollower{},
+		&models.EventOrganizerFollower{},
+		&models.EventShare{},
+		&models.EventStaff{},
 		// Add more models here as they are created
 	}
 
