@@ -4,71 +4,36 @@ echo "========================================="
 echo "  Generating Swagger Documentation"
 echo "========================================="
 
-# Check if swag is installed
+export PATH=$PATH:$(go env GOPATH)/bin
+
 if ! command -v swag &> /dev/null; then
-    echo "Swag not found. Installing..."
+    echo "Swag not found. Installing latest..."
     go install github.com/swaggo/swag/cmd/swag@latest
     export PATH=$PATH:$(go env GOPATH)/bin
 fi
 
-# Clean existing docs (but we'll keep a backup)
+echo "Cleaning existing docs..."
 rm -rf docs/
 
-# Try automatic generation
-echo "Attempting automatic generation..."
+echo "Generating Swagger docs..."
+# NOTE: --parseDependency is intentionally OMITTED.
+# It crawls Go stdlib (math/rand/v2) which uses generics the parser doesn't support.
 swag init \
-    --dir . \
-    --generalInfo cmd/api/main.go \
-    --output docs \
-    --parseDependency \
+    -g cmd/api/main.go \
+    -o docs \
     --parseInternal \
-    --parseDepth 5 \
-    --exclude vendor \
-    --ot go,json,yaml
+    --parseDepth 5
 
-# Check if generation succeeded
-if [ -f "docs/docs.go" ] && [ -f "docs/swagger.json" ]; then
-    echo "✅ Automatic generation succeeded!"
-    echo "Files created:"
-    echo "  - docs/docs.go"
-    echo "  - docs/swagger.json"
-    echo "  - docs/swagger.yaml"
+if [ -f "docs/swagger.json" ]; then
+    COUNT=$(python3 -c "
+import json
+with open('docs/swagger.json') as f:
+    d = json.load(f)
+    print(len(d.get('paths', {})))
+" 2>/dev/null || echo "?")
+    echo "✅ Swagger docs generated — paths: $COUNT"
+    echo "   View at http://localhost:8080/swagger/index.html"
 else
-    echo "⚠️  Automatic generation failed. Creating minimal docs.go..."
-    mkdir -p docs
-    cat > docs/docs.go <<'EOF'
-package docs
-
-import "github.com/swaggo/swag"
-
-const docTemplate = `{
-    "openapi": "3.0.0",
-    "info": {
-        "title": "1Kulture API",
-        "version": "1.0",
-        "description": "Enterprise Event Management System API"
-    },
-    "host": "localhost:8080",
-    "basePath": "/api/v1",
-    "schemes": ["http", "https"],
-    "paths": {}
-}`
-
-var SwaggerInfo = &swag.Spec{
-    Version:          "1.0",
-    Host:             "localhost:8080",
-    BasePath:         "/api/v1",
-    Schemes:          []string{"http", "https"},
-    Title:            "1Kulture API",
-    Description:      "Enterprise Event Management System API",
-    InfoInstanceName: "swagger",
-    SwaggerTemplate:  docTemplate,
-}
-
-func init() {
-    swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
-}
-EOF
-    echo "✅ Created minimal docs/docs.go"
-    echo "ℹ️  You can later replace it with full generated docs if automatic generation works."
+    echo "⚠️  swagger.json not generated. Check the log above."
+    exit 1
 fi

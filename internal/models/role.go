@@ -11,6 +11,7 @@ const (
 	RoleGuest        RoleName = "guest"
 	RoleVendor       RoleName = "vendor"
 	RoleEventManager RoleName = "event_manager"
+	RoleBrand        RoleName = "brand"
 	RoleAdmin        RoleName = "admin"
 )
 

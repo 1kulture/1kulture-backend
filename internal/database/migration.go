@@ -40,6 +40,28 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.EventOrganizerFollower{},
 		&models.EventShare{},
 		&models.EventStaff{},
+
+		// Phase 2 — Ticketing
+		&models.TicketType{},
+		&models.Order{},
+		&models.OrderItem{},
+		&models.Ticket{},
+		&models.PromoCode{},
+		&models.PromoCodeRedemption{},
+		&models.CheckIn{},
+		&models.Refund{},
+		&models.LedgerEntry{},
+		&models.PaymentTransaction{},
+		&models.TicketTransfer{},
+
+		// Phase 2A — Brand Partnerships
+		&models.BrandProfile{},
+		&models.EventPartnershipConfig{},
+		&models.PartnershipOpportunity{},
+		&models.PartnershipRequest{},
+		&models.PartnershipMetric{},
+		&models.Notification{},
+		&models.AffiliateCode{},
 		// Add more models here as they are created
 	}
 
@@ -97,22 +119,11 @@ func createEnumTypes(db *gorm.DB) error {
 func seedDefaultData(db *gorm.DB) error {
 	// Seed default roles
 	roles := []models.Role{
-		{
-			Name:        string(models.RoleGuest),
-			Description: "Guest user - can browse and purchase tickets",
-		},
-		{
-			Name:        string(models.RoleVendor),
-			Description: "Vendor - can provide services for events",
-		},
-		{
-			Name:        string(models.RoleEventManager),
-			Description: "Event Manager - can create and manage events",
-		},
-		{
-			Name:        string(models.RoleAdmin),
-			Description: "System Administrator",
-		},
+		{Name: string(models.RoleGuest), Description: "Guest user - can browse and purchase tickets"},
+		{Name: string(models.RoleVendor), Description: "Vendor - can provide services for events"},
+		{Name: string(models.RoleEventManager), Description: "Event Manager - can create and manage events"},
+		{Name: string(models.RoleBrand), Description: "Brand - can partner with events"},
+		{Name: string(models.RoleAdmin), Description: "System Administrator"},
 	}
 
 	for _, role := range roles {

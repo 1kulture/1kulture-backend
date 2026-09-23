@@ -17,6 +17,7 @@ type Config struct {
 	Security    SecurityConfig
 	Environment string
 	App         AppConfig
+	Payments    PaymentsConfig
 }
 
 type AppConfig struct {
@@ -84,6 +85,16 @@ type SecurityConfig struct {
 	Enable2FA            bool
 	AllowedOrigins       []string
 	TrustedProxies       []string
+}
+
+type PaymentsConfig struct {
+	DefaultProvider       string // paystack | flutterwave | stripe
+	PaystackSecretKey     string
+	PaystackPublicKey     string
+	PaystackWebhookSecret string
+	CallbackURL           string
+	// Order reservation hold
+	OrderHoldMinutes int
 }
 
 func LoadConfig() (*Config, error) {
@@ -165,6 +176,14 @@ func LoadConfig() (*Config, error) {
 			AllowedOrigins:       viper.GetStringSlice("ALLOWED_ORIGINS"),
 			TrustedProxies:       viper.GetStringSlice("TRUSTED_PROXIES"),
 		},
+		Payments: PaymentsConfig{
+			DefaultProvider:       viper.GetString("PAYMENTS_DEFAULT_PROVIDER"),
+			PaystackSecretKey:     viper.GetString("PAYSTACK_SECRET_KEY"),
+			PaystackPublicKey:     viper.GetString("PAYSTACK_PUBLIC_KEY"),
+			PaystackWebhookSecret: viper.GetString("PAYSTACK_WEBHOOK_SECRET"),
+			CallbackURL:           viper.GetString("PAYMENTS_CALLBACK_URL"),
+			OrderHoldMinutes:      viper.GetInt("ORDER_HOLD_MINUTES"),
+		},
 		Environment: viper.GetString("ENVIRONMENT"),
 	}
 
@@ -199,6 +218,9 @@ func setDefaults() {
 	viper.SetDefault("ALLOWED_ORIGINS", []string{"http://localhost:3000"})
 	viper.SetDefault("TRUSTED_PROXIES", []string{"127.0.0.1"})
 	viper.SetDefault("SMTP_PORT", 587)
+	viper.SetDefault("PAYMENTS_DEFAULT_PROVIDER", "paystack")
+	viper.SetDefault("ORDER_HOLD_MINUTES", 15)
+	viper.SetDefault("PAYMENTS_CALLBACK_URL", "http://localhost:3000/payment/callback")
 }
 
 func (c *Config) validate() error {
@@ -216,6 +238,11 @@ func (c *Config) validate() error {
 	}
 	if c.Security.BCryptCost < 10 || c.Security.BCryptCost > 15 {
 		return fmt.Errorf("BCRYPT_COST must be between 10 and 15")
+	}
+	if c.Payments.DefaultProvider == "paystack" {
+		if c.Payments.PaystackSecretKey == "" {
+			return fmt.Errorf("PAYSTACK_SECRET_KEY must be set when default provider is paystack")
+		}
 	}
 	if c.App.Environment == "production" {
 		if c.Database.SSLMode != "require" && c.Database.SSLMode != "verify-full" {

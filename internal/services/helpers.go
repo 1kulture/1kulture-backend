@@ -14,6 +14,10 @@ func jsonUnmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
+func jsonMarshal(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
 func fromJSONMap(j []byte) map[string]interface{} {
 	if len(j) == 0 || string(j) == "null" {
 		return nil

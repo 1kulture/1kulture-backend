@@ -17,12 +17,13 @@ import (
 
 	"github.com/1kulture/1kulture-backend/internal/config"
 	"github.com/1kulture/1kulture-backend/internal/database"
+	"github.com/1kulture/1kulture-backend/internal/payments"
+	"github.com/1kulture/1kulture-backend/internal/payments/paystack"
 	"github.com/1kulture/1kulture-backend/internal/routes"
 	"github.com/1kulture/1kulture-backend/internal/utils/jwt"
 	"github.com/1kulture/1kulture-backend/internal/utils/logger"
 	"github.com/1kulture/1kulture-backend/internal/utils/validator"
 
-	// Import your own docs package
 	_ "github.com/1kulture/1kulture-backend/docs"
 )
 
@@ -54,11 +55,12 @@ var (
 )
 
 type Application struct {
-	config     *config.Config
-	router     *gin.Engine
-	db         *gorm.DB
-	redis      *redis.Client
-	jwtManager *jwt.JWTManager
+	config          *config.Config
+	router          *gin.Engine
+	db              *gorm.DB
+	redis           *redis.Client
+	jwtManager      *jwt.JWTManager
+	paymentProvider payments.PaymentProvider
 }
 
 func main() {
@@ -87,10 +89,7 @@ func main() {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	// Create application instance
-	app := &Application{
-		config: cfg,
-	}
+	app := &Application{config: cfg}
 
 	// Initialize database
 	if err := app.initDatabase(); err != nil {
@@ -98,7 +97,7 @@ func main() {
 	}
 	defer app.closeDatabase()
 
-	// Initialize Redis (optional in development)
+	// Initialize Redis (optional)
 	if err := app.initRedis(); err != nil {
 		if cfg.App.Environment == "production" {
 			logger.Fatal("Failed to initialize Redis:", err)
@@ -119,8 +118,25 @@ func main() {
 		cfg.JWT.RefreshTokenExpiry,
 	)
 
+	// ---- Payment provider ----
+	var paymentProvider payments.PaymentProvider
+	switch cfg.Payments.DefaultProvider {
+	case "", "paystack":
+		if cfg.Payments.PaystackSecretKey == "" {
+			logger.Fatal("PAYSTACK_SECRET_KEY is required")
+		}
+		paymentProvider = paystack.NewClient(
+			cfg.Payments.PaystackSecretKey,
+			cfg.Payments.PaystackWebhookSecret,
+		)
+		logger.Info("Payment provider initialized: paystack")
+	default:
+		logger.Fatalf("Unsupported payment provider: %s", cfg.Payments.DefaultProvider)
+	}
+	app.paymentProvider = paymentProvider
+
 	// Initialize router
-	app.router = routes.SetupRouter(cfg, app.db, app.redis, app.jwtManager)
+	app.router = routes.SetupRouter(cfg, app.db, app.redis, app.jwtManager, app.paymentProvider)
 
 	// Setup Swagger (conditionally)
 	app.setupSwagger()
@@ -134,12 +150,9 @@ func (app *Application) initDatabase() error {
 		return err
 	}
 	app.db = database.GetDB()
-
-	// Run migrations
 	if err := database.AutoMigrate(app.db); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
-
 	logger.Info("Database initialized successfully")
 	return nil
 }
@@ -151,19 +164,20 @@ func (app *Application) closeDatabase() {
 }
 
 func (app *Application) initRedis() error {
+	if app.config.Redis.Host == "" {
+		logger.Info("Redis host not configured, skipping Redis")
+		return nil
+	}
 	app.redis = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", app.config.Redis.Host, app.config.Redis.Port),
 		Password: app.config.Redis.Password,
 		DB:       app.config.Redis.DB,
 	})
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	if err := app.redis.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
-
 	logger.Info("Redis connected successfully")
 	return nil
 }
@@ -194,23 +208,20 @@ func (app *Application) startServer() {
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    60 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1 MB
+		MaxHeaderBytes: 1 << 20,
 	}
 
-	// Start server in a goroutine
 	go func() {
 		logger.Info(fmt.Sprintf("Server is running on http://%s", serverAddr))
 		logger.Info(fmt.Sprintf("Health check: http://%s/health", serverAddr))
 		if app.config.App.Environment != "production" {
 			logger.Info(fmt.Sprintf("Swagger: http://%s/swagger/index.html", serverAddr))
 		}
-
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("Failed to start server:", err)
 		}
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -223,6 +234,5 @@ func (app *Application) startServer() {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Fatal("Server forced to shutdown:", err)
 	}
-
 	logger.Info("Server exited properly")
 }
