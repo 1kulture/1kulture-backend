@@ -175,4 +175,4 @@ keys/
 
 
 # Ignore local source-of-truth file
-Source_Of_Truth.md
+Source_Of_Truth.md.env.example
