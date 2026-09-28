@@ -88,6 +88,14 @@ func (s *authService) SignUp(ctx context.Context, req *requests.SignUpRequest) (
 		return nil, err
 	}
 
+	// Compensating cleanup: if anything downstream fails, soft-delete the user
+	// so the email can be reused and no orphaned pending account is left behind.
+	cleanupUser := func() {
+		if delErr := s.userRepo.Delete(ctx, user.ID); delErr != nil {
+			logger.Error("Failed to cleanup user after signup error: ", delErr)
+		}
+	}
+
 	// Assign default role (guest) or selected role
 	roleName := string(models.RoleGuest)
 	if req.Role != "" {
@@ -96,19 +104,23 @@ func (s *authService) SignUp(ctx context.Context, req *requests.SignUpRequest) (
 
 	role, err := s.roleRepo.FindByName(ctx, roleName)
 	if err != nil {
+		cleanupUser()
 		return nil, err
 	}
 	if role == nil {
+		cleanupUser()
 		return nil, fmt.Errorf("role not found: %s", roleName)
 	}
 
 	if err := s.roleRepo.AssignRoleToUser(ctx, user.ID, role.ID); err != nil {
+		cleanupUser()
 		return nil, err
 	}
 
 	// Generate verification code
 	code, err := generateVerificationCode()
 	if err != nil {
+		cleanupUser()
 		return nil, err
 	}
 
@@ -121,25 +133,16 @@ func (s *authService) SignUp(ctx context.Context, req *requests.SignUpRequest) (
 	}
 
 	if err := s.emailVerifRepo.Create(ctx, verification); err != nil {
+		cleanupUser()
 		return nil, err
 	}
 
-	// Send verification email
-	if err := s.emailService.SendVerificationEmail(user.Email, code); err != nil {
-		logger.Error("Failed to send verification email:", err)
-		// Don't fail signup if email fails, user can resend
-	}
-
-	// Create audit log
-	auditLog := s.createAuditLog(ctx, &user.ID, "USER_SIGNUP", "user", user.ID.String(), "success")
-	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
-	}
-
-	// Generate tokens
+	// Generate tokens BEFORE email (so a token-generation failure doesn't
+	// leave the account half-created).
 	roles := []string{roleName}
 	tokens, err := s.jwtManager.GenerateTokens(user.ID, user.Email, roles)
 	if err != nil {
+		cleanupUser()
 		return nil, err
 	}
 
@@ -150,7 +153,19 @@ func (s *authService) SignUp(ctx context.Context, req *requests.SignUpRequest) (
 		ExpiresAt: time.Unix(tokens.RtExpires, 0),
 	}
 	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
+		cleanupUser()
 		return nil, err
+	}
+
+	// Send verification email — non-critical, log but do NOT roll back.
+	if err := s.emailService.SendVerificationEmail(user.Email, code); err != nil {
+		logger.Error("Failed to send verification email: ", err)
+	}
+
+	// Create audit log — non-critical, log but do NOT roll back.
+	auditLog := s.createAuditLog(ctx, &user.ID, "USER_SIGNUP", "user", user.ID.String(), "success")
+	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	// Prepare response
@@ -182,20 +197,16 @@ func (s *authService) SignIn(ctx context.Context, req *requests.SignInRequest) (
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		// Log failed login attempt
-		s.createAuditLog(ctx, &user.ID, "USER_SIGNIN_FAILED", "user", user.ID.String(), "failed")
+		auditLog := s.createAuditLog(ctx, &user.ID, "USER_SIGNIN_FAILED", "user", user.ID.String(), "failed")
+		if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
+			logger.Error("Failed to create audit log: ", err)
+		}
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
 	// Check if email is verified
 	if user.EmailVerifiedAt == nil {
 		return nil, fmt.Errorf("email not verified")
-	}
-
-	// Update last login
-	now := time.Now()
-	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, now); err != nil {
-		logger.Error("Failed to update last login:", err)
 	}
 
 	// Get user roles
@@ -209,26 +220,33 @@ func (s *authService) SignIn(ctx context.Context, req *requests.SignInRequest) (
 		roleNames[i] = role.Name
 	}
 
-	// Generate tokens
+	// Generate tokens BEFORE any writes
 	tokens, err := s.jwtManager.GenerateTokens(user.ID, user.Email, roleNames)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save refresh token
+	// Save refresh token — this is the critical write. If it fails, return
+	// an error and do not update last login.
 	refreshToken := &models.RefreshToken{
 		UserID:    user.ID,
 		Token:     tokens.RefreshToken,
 		ExpiresAt: time.Unix(tokens.RtExpires, 0),
 	}
 	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	// Create audit log
+	// Update last login — non-critical, log but do NOT fail
+	now := time.Now()
+	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, now); err != nil {
+		logger.Error("Failed to update last login: ", err)
+	}
+
+	// Create audit log — non-critical, log but do NOT fail
 	auditLog := s.createAuditLog(ctx, &user.ID, "USER_SIGNIN", "user", user.ID.String(), "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	// Prepare response
@@ -296,7 +314,7 @@ func (s *authService) VerifyEmail(ctx context.Context, req *requests.VerifyEmail
 	// Create audit log
 	auditLog := s.createAuditLog(ctx, &user.ID, "EMAIL_VERIFIED", "user", user.ID.String(), "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	return nil
@@ -437,7 +455,7 @@ func (s *authService) Logout(ctx context.Context, req *requests.LogoutRequest) e
 	// Create audit log
 	auditLog := s.createAuditLog(ctx, &claims.UserID, "USER_LOGOUT", "auth", claims.SessionID, "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	return nil
@@ -480,14 +498,14 @@ func (s *authService) ForgotPassword(ctx context.Context, req *requests.ForgotPa
 
 	// Send password reset email
 	if err := s.emailService.SendPasswordResetEmail(user.Email, resetLink); err != nil {
-		logger.Error("Failed to send password reset email:", err)
+		logger.Error("Failed to send password reset email: ", err)
 		return fmt.Errorf("failed to send password reset email: %w", err)
 	}
 
 	// Create audit log
 	auditLog := s.createAuditLog(ctx, &user.ID, "PASSWORD_RESET_REQUESTED", "auth", user.ID.String(), "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	return nil
@@ -526,18 +544,18 @@ func (s *authService) ResetPassword(ctx context.Context, req *requests.ResetPass
 	// Mark reset token as used
 	now := time.Now()
 	if err := s.passwordResetRepo.MarkAsUsed(ctx, passwordReset.ID, now); err != nil {
-		logger.Error("Failed to mark reset token as used:", err)
+		logger.Error("Failed to mark reset token as used: ", err)
 	}
 
 	// Revoke all refresh tokens for this user
 	if err := s.refreshTokenRepo.RevokeAllForUser(ctx, user.ID); err != nil {
-		logger.Error("Failed to revoke refresh tokens:", err)
+		logger.Error("Failed to revoke refresh tokens: ", err)
 	}
 
 	// Create audit log
 	auditLog := s.createAuditLog(ctx, &user.ID, "PASSWORD_RESET_COMPLETED", "auth", user.ID.String(), "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	return nil
@@ -582,13 +600,13 @@ func (s *authService) ChangePassword(ctx context.Context, userID string, req *re
 
 	// Revoke all refresh tokens for this user
 	if err := s.refreshTokenRepo.RevokeAllForUser(ctx, user.ID); err != nil {
-		logger.Error("Failed to revoke refresh tokens:", err)
+		logger.Error("Failed to revoke refresh tokens: ", err)
 	}
 
 	// Create audit log
 	auditLog := s.createAuditLog(ctx, &user.ID, "PASSWORD_CHANGED", "auth", user.ID.String(), "success")
 	if err := s.auditLogRepo.Create(ctx, auditLog); err != nil {
-		logger.Error("Failed to create audit log:", err)
+		logger.Error("Failed to create audit log: ", err)
 	}
 
 	return nil

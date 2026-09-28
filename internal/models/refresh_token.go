@@ -10,7 +10,7 @@ import (
 type RefreshToken struct {
 	ID        uuid.UUID  `gorm:"type:uuid;primary_key;" json:"id"`
 	UserID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"user_id"`
-	Token     string     `gorm:"uniqueIndex;not null;size:500" json:"token"`
+	Token     string     `gorm:"uniqueIndex;not null;type:text" json:"token"`
 	ExpiresAt time.Time  `gorm:"not null;index" json:"expires_at"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`

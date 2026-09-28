@@ -27,7 +27,7 @@ type TicketTransfer struct {
 
 	Message string `gorm:"type:text" json:"message,omitempty"`
 
-	Token     string               `gorm:"uniqueIndex;not null;size:100" json:"token"`
+	Token     string               `gorm:"uniqueIndex;not null;type:text" json:"token"`
 	Status    TicketTransferStatus `gorm:"size:20;not null;default:'pending';index" json:"status"`
 	ExpiresAt time.Time            `gorm:"not null;index" json:"expires_at"`
 

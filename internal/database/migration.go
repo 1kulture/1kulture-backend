@@ -89,6 +89,10 @@ func AutoMigrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to seed default data: %w", err)
 	}
 
+	if err := runPostMigrationFixes(db); err != nil {
+		return err
+	}
+
 	appLogger.Info("Database migration completed successfully")
 	return nil
 }
@@ -135,6 +139,21 @@ func seedDefaultData(db *gorm.DB) error {
 			}
 			appLogger.Info("Seeded role: ", role.Name)
 		}
+	}
+
+	return nil
+}
+
+func runPostMigrationFixes(db *gorm.DB) error {
+	// Fix refresh_tokens.token (was varchar(500), JWTs are longer)
+	if err := db.Exec(`ALTER TABLE refresh_tokens ALTER COLUMN token TYPE TEXT;`).Error; err != nil {
+		return fmt.Errorf("failed to alter refresh_tokens.token: %w", err)
+	}
+
+	// Fix ticket_transfers.token (same reason — long random tokens)
+	if err := db.Exec(`ALTER TABLE ticket_transfers ALTER COLUMN token TYPE TEXT;`).Error; err != nil {
+		// table may not exist yet in early envs, log and continue
+		appLogger.Warning("Could not alter ticket_transfers.token: ", err)
 	}
 
 	return nil
