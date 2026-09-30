@@ -39,7 +39,6 @@ import (
 // @license.name Proprietary
 // @license.url https://1kulture.com/license
 
-// @host localhost:8080
 // @BasePath /api/v1
 // @schemes http https
 
