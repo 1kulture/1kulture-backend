@@ -301,18 +301,53 @@ func (c *AuthController) ForgotPassword(ctx *gin.Context) {
 	}
 
 	// Always return success (don't reveal if email exists)
-	response.OK(ctx, "If the email exists, a password reset link has been sent", nil)
+	response.OK(ctx, "If the email exists, a password reset code has been sent", nil)
+}
+
+// VerifyPasswordResetOTP godoc
+// @Summary Verify password reset OTP
+// @Description Verify password reset 4-digit code
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body requests.VerifyPasswordResetOTPRequest true "Verify OTP request"
+// @Success 200 {object} responses.Response "OTP verified successfully"
+// @Failure 400 {object} responses.ErrorResponse "Invalid or expired OTP"
+// @Failure 422 {object} responses.ErrorResponse "Validation error"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/verify-password-reset [post]
+func (c *AuthController) VerifyPasswordResetOTP(ctx *gin.Context) {
+	var req requests.VerifyPasswordResetOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(ctx, "Invalid request body", err.Error())
+		return
+	}
+
+	// Validate request
+	if errors := validator.Struct(req); errors != nil {
+		response.ValidationError(ctx, errors)
+		return
+	}
+
+	// Call service
+	if err := c.authService.VerifyPasswordResetOTP(ctx.Request.Context(), &req); err != nil {
+		logger.WithRequest(ctx).Warning("VerifyPasswordResetOTP failed: ", err)
+		response.BadRequest(ctx, "Invalid or expired reset code", nil)
+		return
+	}
+
+	response.OK(ctx, "OTP verified successfully", nil)
 }
 
 // ResetPassword godoc
 // @Summary Reset password
-// @Description Reset password using token
+// @Description Reset password
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param request body requests.ResetPasswordRequest true "Reset password request"
 // @Success 200 {object} responses.Response "Password reset successfully"
-// @Failure 400 {object} responses.ErrorResponse "Invalid or expired token"
+// @Failure 400 {object} responses.ErrorResponse "Invalid or expired code"
 // @Failure 422 {object} responses.ErrorResponse "Validation error"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /auth/reset-password [post]
@@ -332,8 +367,8 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 	// Call service
 	if err := c.authService.ResetPassword(ctx.Request.Context(), &req); err != nil {
 		logger.WithRequest(ctx).Warning("ResetPassword failed: ", err)
-		if err.Error() == "invalid or expired reset token" {
-			response.BadRequest(ctx, "Invalid or expired reset token", nil)
+		if err.Error() == "invalid or expired reset code" {
+			response.BadRequest(ctx, "Invalid or expired reset code", nil)
 			return
 		}
 		response.InternalServerError(ctx, "Failed to reset password")

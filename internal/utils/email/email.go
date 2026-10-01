@@ -106,15 +106,15 @@ func (s *EmailService) SendVerificationEmail(to, code string) error {
 	})
 }
 
-func (s *EmailService) SendPasswordResetEmail(to, resetLink string) error {
+func (s *EmailService) SendPasswordResetEmail(to, code string) error {
 	return s.SendEmail(EmailData{
 		To:       to,
 		Subject:  "Reset Your Password - 1Kulture",
 		Template: "password_reset",
 		Data: map[string]interface{}{
-			"ResetLink": resetLink,
-			"Email":     to,
-			"AppName":   "1Kulture",
+			"Code":    code,
+			"Email":   to,
+			"AppName": "1Kulture",
 		},
 	})
 }

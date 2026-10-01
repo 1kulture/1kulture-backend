@@ -10,7 +10,7 @@ import (
 type PasswordReset struct {
 	BaseModel
 	UserID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"user_id"`
-	Token     string     `gorm:"uniqueIndex;not null;size:500" json:"token"`
+	Token     string     `gorm:"not null;size:4" json:"token"`
 	ExpiresAt time.Time  `gorm:"not null;index" json:"expires_at"`
 	UsedAt    *time.Time `json:"used_at,omitempty"`
 	User      User       `gorm:"foreignKey:UserID" json:"-"`

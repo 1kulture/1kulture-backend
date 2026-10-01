@@ -17,7 +17,12 @@ type SignInRequest struct {
 
 type VerifyEmailRequest struct {
 	Email string `json:"email" validate:"required,email,max=255"`
-	Code  string `json:"code" validate:"required,len=6,numeric"`
+	Code  string `json:"code" validate:"required,len=4,numeric"`
+}
+
+type VerifyPasswordResetOTPRequest struct {
+	Email string `json:"email" validate:"required,email,max=255"`
+	Code  string `json:"code" validate:"required,len=4,numeric"`
 }
 
 type ResendVerificationRequest struct {
@@ -33,7 +38,8 @@ type ForgotPasswordRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Token       string `json:"token" validate:"required"`
+	Email       string `json:"email" validate:"required,email,max=255"`
+	Code        string `json:"code" validate:"required,len=4,numeric"`
 	NewPassword string `json:"new_password" validate:"required,min=8,max=72"`
 }
 

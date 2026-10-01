@@ -98,6 +98,7 @@ func SetupRouter(
 		jwtManager,
 		emailService,
 		cfg,
+		db,
 	)
 	userService := services.NewUserService(userRepo, roleRepo, auditLogRepo, kycRepo)
 	waitlistService := services.NewWaitlistService(waitlistRepo, auditLogRepo)
@@ -253,6 +254,7 @@ func SetupRouter(
 			authRoutes.POST("/refresh-token", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.RefreshToken)
 			authRoutes.POST("/logout", authController.Logout)
 			authRoutes.POST("/forgot-password", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.ForgotPassword)
+			authRoutes.POST("/verify-password-reset", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.VerifyPasswordResetOTP)
 			authRoutes.POST("/reset-password", middleware.RateLimitMiddleware(redisClient, cfg.RateLimit), authController.ResetPassword)
 		}
 

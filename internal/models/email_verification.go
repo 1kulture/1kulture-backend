@@ -11,7 +11,7 @@ type EmailVerification struct {
 	BaseModel
 	UserID     uuid.UUID  `gorm:"type:uuid;not null;index" json:"user_id"`
 	Email      string     `gorm:"size:255;not null;index" json:"email"`
-	Code       string     `gorm:"size:6;not null" json:"code"`
+	Code       string     `gorm:"size:4;not null" json:"code"`
 	ExpiresAt  time.Time  `gorm:"not null;index" json:"expires_at"`
 	VerifiedAt *time.Time `json:"verified_at,omitempty"`
 	Attempts   int        `gorm:"default:0" json:"attempts"`
