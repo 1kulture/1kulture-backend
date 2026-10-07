@@ -1938,7 +1938,7 @@ const docTemplate = `{
         },
         "/auth/verify-email": {
             "post": {
-                "description": "Verify email with 6-digit code",
+                "description": "Verify email with 4-digit code",
                 "consumes": [
                     "application/json"
                 ],

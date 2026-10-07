@@ -112,7 +112,7 @@ func (c *AuthController) SignIn(ctx *gin.Context) {
 
 // VerifyEmail godoc
 // @Summary Verify email address
-// @Description Verify email with 6-digit code
+// @Description Verify email with 4-digit code
 // @Tags auth
 // @Accept json
 // @Produce json
