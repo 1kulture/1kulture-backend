@@ -84,6 +84,9 @@ func SetupRouter(
 	notificationRepo := repositories.NewNotificationRepository(db)
 	affiliateCodeRepo := repositories.NewAffiliateCodeRepository(db)
 
+	categoryRepo := repositories.NewEventCategoryRepository(db)
+	interestRepo := repositories.NewUserInterestRepository(db)
+
 	// ==========================================================
 	// SERVICES
 	// ==========================================================
@@ -203,6 +206,8 @@ func SetupRouter(
 		coOrgRepo,
 	)
 
+	interestService := services.NewInterestService(categoryRepo, interestRepo, auditLogRepo)
+
 	// ==========================================================
 	// CONTROLLERS
 	// ==========================================================
@@ -216,7 +221,7 @@ func SetupRouter(
 	commissionController := controllers.NewCommissionController(commissionService)
 
 	// Phase 1
-	eventController := controllers.NewEventController(eventService)
+	eventController := controllers.NewEventController(eventService, interestService)
 
 	// Phase 2
 	ticketTypeController := controllers.NewTicketTypeController(ticketTypeService)
@@ -236,6 +241,7 @@ func SetupRouter(
 	affiliateCodeController := controllers.NewAffiliateCodeController(affiliateCodeService)
 	notificationController := controllers.NewNotificationController(notificationService)
 	brandDiscoveryController := controllers.NewBrandDiscoveryController(brandDiscoveryService)
+	interestController := controllers.NewInterestController(interestService)
 
 	// ==========================================================
 	// ROUTES
@@ -302,6 +308,7 @@ func SetupRouter(
 		// ------------------------------------------------------
 		v1.GET("/events/:id/partnership-config", partnershipConfigController.Get)
 		v1.GET("/events/:id/partnership-opportunities", partnershipConfigController.ListOpportunities)
+		v1.GET("/categories", interestController.ListCategories)
 
 		// ------------------------------------------------------
 		// Authenticated general group
@@ -423,6 +430,10 @@ func SetupRouter(
 			protectedRoutes.PUT("/notifications/read-all", notificationController.MarkAllRead)
 			protectedRoutes.PUT("/notifications/:id/read", notificationController.MarkRead)
 			protectedRoutes.DELETE("/notifications/:id", notificationController.Delete)
+
+			//Categories
+			protectedRoutes.GET("/users/me/interests", interestController.GetMine)
+			protectedRoutes.PUT("/users/me/interests", interestController.UpdateMine)
 		}
 
 		// ------------------------------------------------------

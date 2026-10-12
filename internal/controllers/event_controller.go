@@ -18,11 +18,16 @@ import (
 )
 
 type EventController struct {
-	eventService serviceInterfaces.EventService
+	eventService    serviceInterfaces.EventService
+	interestService serviceInterfaces.InterestService
 }
 
-func NewEventController(eventService serviceInterfaces.EventService) *EventController {
-	return &EventController{eventService: eventService}
+func NewEventController(eventService serviceInterfaces.EventService,
+	interestService serviceInterfaces.InterestService) *EventController {
+	return &EventController{
+		eventService:    eventService,
+		interestService: interestService,
+	}
 }
 
 // viewerIDFromCtx returns the authenticated user's ID from context, or nil.
@@ -95,11 +100,11 @@ func (c *EventController) Create(ctx *gin.Context) {
 
 // ListEvents godoc
 // @Summary List events
-// @Description Public listing. Supports filters.
+// @Description Public listing. Supports filters. Pass `personalized=true` (with a valid token) to filter by the user's saved interests.
 // @Tags events
 // @Accept json
 // @Produce json
-// @Param category query string false "Category"
+// @Param category query string false "Category slug (e.g. concerts, tech-events)"
 // @Param city query string false "City"
 // @Param country query string false "Country"
 // @Param event_type query string false "in_person | virtual | hybrid"
@@ -108,6 +113,7 @@ func (c *EventController) Create(ctx *gin.Context) {
 // @Param status query string false "Status"
 // @Param start_from query string false "RFC3339 start filter"
 // @Param start_to query string false "RFC3339 end filter"
+// @Param personalized query bool false "Filter by user's saved interests (requires auth)"
 // @Param page query int false "Page"
 // @Param per_page query int false "Per page"
 // @Success 200 {array} responses.EventSummaryResponse "Events"
@@ -127,6 +133,7 @@ func (c *EventController) List(ctx *gin.Context) {
 		Page:      page,
 		PerPage:   perPage,
 	}
+
 	if v := ctx.Query("organizer_id"); v != "" {
 		id, err := uuid.Parse(v)
 		if err != nil {
@@ -135,6 +142,7 @@ func (c *EventController) List(ctx *gin.Context) {
 		}
 		filter.OrganizerID = &id
 	}
+
 	if v := ctx.Query("start_from"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
@@ -143,6 +151,7 @@ func (c *EventController) List(ctx *gin.Context) {
 		}
 		filter.StartFrom = &t
 	}
+
 	if v := ctx.Query("start_to"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
@@ -152,7 +161,22 @@ func (c *EventController) List(ctx *gin.Context) {
 		filter.StartTo = &t
 	}
 
-	list, total, err := c.eventService.List(ctx.Request.Context(), filter, viewerIDFromCtx(ctx))
+	// Personalization: if requested and user is authenticated and has saved interests,
+	// override the category filter with the user's first interest.
+	viewerID := viewerIDFromCtx(ctx)
+	personalized := ctx.DefaultQuery("personalized", "false") == "true"
+	if personalized && viewerID != nil {
+		slugs, err := c.interestService.GetInterestSlugs(ctx.Request.Context(), *viewerID)
+		if err == nil && len(slugs) > 0 {
+			// If caller didn't explicitly pass a category, use the user's first interest.
+			// If they did pass one, respect it (explicit over implicit).
+			if filter.Category == "" {
+				filter.Category = slugs[0]
+			}
+		}
+	}
+
+	list, total, err := c.eventService.List(ctx.Request.Context(), filter, viewerID)
 	if err != nil {
 		logger.WithRequest(ctx).Error("ListEvents failed: ", err)
 		response.InternalServerError(ctx, "Failed to list events")

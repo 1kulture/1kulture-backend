@@ -62,6 +62,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.PartnershipMetric{},
 		&models.Notification{},
 		&models.AffiliateCode{},
+		&models.EventCategory{},
+		&models.UserInterest{},
 		// Add more models here as they are created
 	}
 
@@ -141,6 +143,34 @@ func seedDefaultData(db *gorm.DB) error {
 		}
 	}
 
+	return nil
+}
+
+func seedCategories(db *gorm.DB) error {
+	categories := []models.EventCategory{
+		{Slug: "concerts", Name: "Concert", Icon: "music", SortOrder: 1, IsActive: true},
+		{Slug: "corporate", Name: "Corporate", Icon: "briefcase", SortOrder: 2, IsActive: true},
+		{Slug: "birthdays", Name: "Birthdays", Icon: "cake", SortOrder: 3, IsActive: true},
+		{Slug: "conferences", Name: "Conferences", Icon: "presentation", SortOrder: 4, IsActive: true},
+		{Slug: "picnics", Name: "Picnics", Icon: "sun", SortOrder: 5, IsActive: true},
+		{Slug: "anniversary", Name: "Anniversary", Icon: "heart", SortOrder: 6, IsActive: true},
+		{Slug: "tech-events", Name: "Tech Events", Icon: "cpu", SortOrder: 7, IsActive: true},
+		{Slug: "religious-events", Name: "Religious Events", Icon: "church", SortOrder: 8, IsActive: true},
+		{Slug: "nightlife", Name: "Nightlife", Icon: "moon", SortOrder: 9, IsActive: true},
+		{Slug: "sports", Name: "Sports", Icon: "activity", SortOrder: 10, IsActive: true},
+		{Slug: "arts-theatre", Name: "Arts & Theatre", Icon: "theater", SortOrder: 11, IsActive: true},
+		{Slug: "food-drinks", Name: "Food & Drinks", Icon: "utensils", SortOrder: 12, IsActive: true},
+	}
+
+	for _, c := range categories {
+		var count int64
+		db.Model(&models.EventCategory{}).Where("slug = ?", c.Slug).Count(&count)
+		if count == 0 {
+			if err := db.Create(&c).Error; err != nil {
+				return fmt.Errorf("failed to seed category %s: %w", c.Slug, err)
+			}
+		}
+	}
 	return nil
 }
 
